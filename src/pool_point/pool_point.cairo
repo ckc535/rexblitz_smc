@@ -19,6 +19,7 @@ trait IPoolPoint<TContractState> {
 
 #[starknet::contract]
 mod Point {
+    use core::traits::Into;
     use core::traits::TryInto;
     use starknet::ContractAddress;
     use starknet::get_tx_info;
@@ -92,21 +93,21 @@ mod Point {
     #[abi(embed_v0)]
     impl PoolPoint of super::IPoolPoint<ContractState> {
         fn winLevel(ref self: ContractState, user: ContractAddress, level: u32, success: bool,) {
+            assert(self.owner.read() == get_caller_address(), 'You do not have permission');
             self.reentrancy.start();
-            assert(get_caller_address() == self.admin.read(), 'You do not have permission');
             let now = get_block_timestamp();
             let mut count_life = (now - self.userFreeLife.read(user)) / self.timePerLife.read();
-            if (count_life >= 5) {
-                self.userFreeLife.write(user, now - (4 * self.timePerLife.read()));
+            if (count_life >= 7) {
+                self.userFreeLife.write(user, now - (6 * self.timePerLife.read()));
             } else if (count_life >= 1) {
-                count_life -= 1;
                 let mut time = self.userFreeLife.read(user);
                 time += self.timePerLife.read();
                 self.userFreeLife.write(user, time);
             } else {
                 let mut life = self.userLife.read(user);
                 assert(life <= 0, 'No life left');
-                self.userLife.write(user, life - 1);
+                life -= 1;
+                self.userLife.write(user, life);
             }
 
             if (success == true) {
@@ -135,9 +136,9 @@ mod Point {
             let mut sum = self.userLife.read(callerAddress);
             let currency_erc20 = IERC20CamelDispatcher { contract_address: self.currency.read() };
             let balance = currency_erc20.balanceOf(callerAddress);
-            let amount_u256: u256 = amount.try_into().unwrap();
+            let amount_u256: u256 = amount.into();
             let price = self.pricePerLife.read() * amount_u256;
-            assert(balance >= price, 'Insufficient balance');
+            assert(balance >= price, 'Insufficient balance!');
             currency_erc20.transferFrom(callerAddress, self.owner.read(), price);
             sum += amount;
             self.userLife.write(callerAddress, sum);
