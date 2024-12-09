@@ -6,13 +6,22 @@ use starknet::get_caller_address;
 
 #[starknet::interface]
 trait IPoolPoint<TContractState> {
-    fn winLevel(ref self: TContractState, user: ContractAddress, level: u32, success: bool,);
-    fn rewardMission(ref self: TContractState, user: ContractAddress, point: u32,);
+    fn winLevel(ref self: TContractState, user: ContractAddress, level: u32, success: bool);
+    fn rewardMission(ref self: TContractState, user: ContractAddress, point: u32);
     fn giveLife(ref self: TContractState, amount: u32);
+    fn setTokenAddress(ref self: TContractState, address: ContractAddress);
+    fn setLifePackPrice(ref self: TContractState, amount: u32, price: u256);
+    fn setTimePerLife(ref self: TContractState, time: u64);
+    fn setPointPerLevel(ref self: TContractState, point: u32);
     fn setPermission(ref self: TContractState, address: ContractAddress, permission: bool);
     fn getLife(self: @TContractState, address: ContractAddress) -> u32;
     fn getTimeRecoverFreeLife(self: @TContractState, address: ContractAddress) -> u64;
     fn getPoint(self: @TContractState, address: ContractAddress) -> u32;
+    fn getUserLevel(self: @TContractState, address: ContractAddress, level: u32) -> bool;
+    fn getTokenAddress(self: @TContractState) -> ContractAddress;
+    fn getLifePackPrice(self: @TContractState, amount: u32) -> u256;
+    fn getTimePerLife(self: @TContractState) -> u64;
+    fn getPointPerLevel(self: @TContractState) -> u32;
     fn getOwner(self: @TContractState) -> ContractAddress;
 }
 
@@ -47,8 +56,9 @@ mod Point {
         owner: ContractAddress,
         admin: ContractAddress,
         currency: ContractAddress,
-        pricePerLife: u256,
+        lifePackPrice: LegacyMap::<u32, u256>,
         timePerLife: u64,
+        pointPerLevel: u32,
         userLevel: LegacyMap::<(ContractAddress, u32), bool>,
         userPoint: LegacyMap::<ContractAddress, u32>,
         userLife: LegacyMap::<ContractAddress, u32>,
@@ -72,14 +82,12 @@ mod Point {
     }
 
     #[constructor]
-    fn constructor(
-        ref self: ContractState, address: ContractAddress, price: u256, currency: ContractAddress
-    ) {
+    fn constructor(ref self: ContractState, address: ContractAddress, currency: ContractAddress) {
         self.owner.write(address);
         self.admin.write(address);
         self.currency.write(currency);
-        self.pricePerLife.write(price);
         self.timePerLife.write(3600);
+        self.pointPerLevel.write(100);
     }
 
     #[event]
@@ -98,23 +106,31 @@ mod Point {
             let now = get_block_timestamp();
             let mut count_life = (now - self.userFreeLife.read(user)) / self.timePerLife.read();
             if (count_life >= 7) {
-                self.userFreeLife.write(user, now - (6 * self.timePerLife.read()));
+                count_life = 7;
+                if (success == false) {
+                    count_life -= 1
+                }
+                self.userFreeLife.write(user, now - (count_life * self.timePerLife.read()));
             } else if (count_life >= 1) {
                 let mut time = self.userFreeLife.read(user);
-                time += self.timePerLife.read();
-                self.userFreeLife.write(user, time);
+                if (success == false) {
+                    time += self.timePerLife.read();
+                    self.userFreeLife.write(user, time);
+                }
             } else {
                 let mut life = self.userLife.read(user);
-                assert(life <= 0, 'No life left');
-                life -= 1;
-                self.userLife.write(user, life);
+                assert(life >= 1, 'No life left');
+                if (success == false) {
+                    life = life - 1;
+                    self.userLife.write(user, life);
+                }
             }
 
             if (success == true) {
                 let level_status = self.userLevel.read((user, level));
                 if (level_status == false) {
                     let mut point = self.userPoint.read(user);
-                    point += 100;
+                    point += self.pointPerLevel.read();
                     self.userPoint.write(user, point);
                     self.userLevel.write((user, level), true);
                 }
@@ -136,13 +152,33 @@ mod Point {
             let mut sum = self.userLife.read(callerAddress);
             let currency_erc20 = IERC20CamelDispatcher { contract_address: self.currency.read() };
             let balance = currency_erc20.balanceOf(callerAddress);
-            let amount_u256: u256 = amount.into();
-            let price = self.pricePerLife.read() * amount_u256;
+            let price = self.lifePackPrice.read(amount);
+            assert(price != 0, 'Pack is not available!');
             assert(balance >= price, 'Insufficient balance!');
             currency_erc20.transferFrom(callerAddress, self.owner.read(), price);
             sum += amount;
             self.userLife.write(callerAddress, sum);
             self.reentrancy.end();
+        }
+
+        fn setTokenAddress(ref self: ContractState, address: ContractAddress) {
+            assert(self.owner.read() == get_caller_address(), 'You do not have permission');
+            self.currency.write(address);
+        }
+
+        fn setLifePackPrice(ref self: ContractState, amount: u32, price: u256) {
+            assert(self.owner.read() == get_caller_address(), 'You do not have permission');
+            self.lifePackPrice.write(amount, price);
+        }
+
+        fn setTimePerLife(ref self: ContractState, time: u64) {
+            assert(self.owner.read() == get_caller_address(), 'You do not have permission');
+            self.timePerLife.write(time);
+        }
+
+        fn setPointPerLevel(ref self: ContractState, point: u32) {
+            assert(self.owner.read() == get_caller_address(), 'You do not have permission');
+            self.pointPerLevel.write(point);
         }
 
         fn setPermission(ref self: ContractState, address: ContractAddress, permission: bool) {
@@ -151,19 +187,39 @@ mod Point {
         }
 
         fn getLife(self: @ContractState, address: ContractAddress) -> u32 {
-            self.userLife.read(address)
+            return self.userLife.read(address);
         }
 
         fn getTimeRecoverFreeLife(self: @ContractState, address: ContractAddress) -> u64 {
-            self.userFreeLife.read(address)
+            return self.userFreeLife.read(address);
         }
 
         fn getPoint(self: @ContractState, address: ContractAddress) -> u32 {
-            self.userPoint.read(address)
+            return self.userPoint.read(address);
+        }
+
+        fn getUserLevel(self: @ContractState, address: ContractAddress, level: u32) -> bool {
+            return self.userLevel.read((address, level));
+        }
+
+        fn getTokenAddress(self: @ContractState) -> ContractAddress {
+            return self.currency.read();
+        }
+
+        fn getLifePackPrice(self: @ContractState, amount: u32) -> u256 {
+            return self.lifePackPrice.read(amount);
+        }
+
+        fn getTimePerLife(self: @ContractState) -> u64 {
+            return self.timePerLife.read();
+        }
+
+        fn getPointPerLevel(self: @ContractState) -> u32 {
+            return self.pointPerLevel.read();
         }
 
         fn getOwner(self: @ContractState) -> ContractAddress {
-            self.owner.read()
+            return self.owner.read();
         }
     }
 
