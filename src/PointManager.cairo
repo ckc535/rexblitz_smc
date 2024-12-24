@@ -1,6 +1,6 @@
 use starknet::{ContractAddress, get_tx_info};
-use core::pedersen::PedersenTrait;
-use core::hash::{HashStateTrait, HashStateExTrait};
+// use core::pedersen::PedersenTrait;
+// use core::hash::{HashStateTrait, HashStateExTrait};
 use starknet::get_caller_address;
 
 #[starknet::interface]
@@ -91,14 +91,14 @@ mod PointManager {
     #[constructor]
     fn constructor(
         ref self: ContractState,
-        address: ContractAddress,
+        owner: ContractAddress,
         currency: ContractAddress,
         max_life: u32,
         point_per_level: u32,
         time_per_life: u64
     ) {
-        self.owner.write(address);
-        self.admin.write(address);
+        self.owner.write(owner);
+        self.admin.write(owner);
         self.currency.write(currency);
         self.max_life.write(max_life);
         self.point_per_level.write(point_per_level);
