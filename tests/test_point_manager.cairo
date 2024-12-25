@@ -61,8 +61,8 @@ fn set_up() ->(
 
 #[test]
 fn test_setup() {
-    // let ( owner, tester) = set_up();
-    assert( 1 == 2, 'Owner tester are not the same');
+    let ( owner, tester) = set_up();
+    assert( owner == tester, 'Owner tester are not the same');
     // let balance = token_dispatcher.balanceOf(owner);
 
 
