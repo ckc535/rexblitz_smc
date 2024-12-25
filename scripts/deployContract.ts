@@ -14,15 +14,15 @@ import {
   } from 'starknet';
   const fs = require('fs');
   
-  // const RPC = 'https://starknet-mainnet.public.blastapi.io/rpc/v0_7';
-  const RPC = 'https://free-rpc.nethermind.io/sepolia-juno/v0_7';
+  const RPC = 'https://starknet-mainnet.public.blastapi.io/rpc/v0_7';
+  // const RPC = 'https://free-rpc.nethermind.io/sepolia-juno/v0_7';
   const provider = new RpcProvider({ nodeUrl: RPC });
   
   const PRIVATE_KEY = '';
   const ACCOUNT_ADDRESS = '';
   
   const TOKEN_ADDRESS =
-    '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7'; //ETH
+    '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d'; //ETH
   
   const account = new Account(provider, ACCOUNT_ADDRESS, PRIVATE_KEY);
   

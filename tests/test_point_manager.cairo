@@ -1,9 +1,5 @@
-use core::result::ResultTrait;
 use core::array::ArrayTrait;
-// use pointmanager::ERC20::ERC20;
-use pointmanager::ERC20::IERC20Dispatcher;
-use pointmanager::ERC20::IERC20DispatcherTrait;
-use snforge_std::{ declare, ContractClassTrait, start_prank, stop_prank, CheatTarget, start_warp, stop_warp, ContractClass };
+use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, CheatTarget, start_warp, stop_warp, ContractClass   };
 use pointmanager::interfaces::IPointManager::{IPointManagerDispatcher, IPointManagerDispatcherTrait};
 
 use starknet::{ContractAddress,SyscallResultTrait, get_block_timestamp};
@@ -33,10 +29,8 @@ fn deploy_erc20(
 }
 
 fn set_up() ->(
-    IPointManagerDispatcher,    
-    IERC20Dispatcher, 
-    ContractAddress,
-    ContractAddress,
+    // IPointManagerDispatcher,  
+    // ContractAddress,
     ContractAddress,
     ContractAddress) {
 
@@ -46,22 +40,20 @@ fn set_up() ->(
         let test_user_contract_addres = deploy_account(account_class, 'Alex');
 
         // Declare and deploy the ERC20 contract mock
-        let token_contract = declare("ERC20").unwrap();
-        let mut token_calldata = array![NAME,SYMBOL,DECIMALS.into(),1000000000000000000000,owner_contract_address.try_into().unwrap()];
-        let (token_address, _) = token_contract.deploy(@token_calldata).unwrap_syscall();
-        let token_dispatcher = IERC20Dispatcher { contract_address: token_address} ;
+        // let token_contract = declare("ERC20").unwrap();
+        // let mut token_calldata = array![NAME,SYMBOL,DECIMALS.into(),1000000000000000000000,owner_contract_address.try_into().unwrap()];
+        // let token_address= deploy_erc20(token_contract, NAME, SYMBOL, DECIMALS, 1000000000000000000000, owner_contract_address);
+        // let token_dispatcher = IERC20Dispatcher { contract_address: token_address} ;
 
         // Declare and deploy the FlexStakingPool contract
-        let contract = declare("PointManager").unwrap();
-        let mut constructor_calldata = array![owner_contract_address.try_into().unwrap()];
-        let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap_syscall();
-        let dispatcher = IPointManagerDispatcher { contract_address };
+        // let contract = declare("PointManager").unwrap();
+        // let mut constructor_calldata = array![owner_contract_address.try_into().unwrap(),test_user_contract_addres.try_into().unwrap(),10,10,3600];
+        // let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap_syscall();
+        // let dispatcher = IPointManagerDispatcher { contract_address };
 
         (
-            dispatcher,
-            token_dispatcher,
-            contract_address,
-            token_address,
+            // dispatcher,
+            // contract_address,
             owner_contract_address,
             test_user_contract_addres,
          )
@@ -69,9 +61,10 @@ fn set_up() ->(
 
 #[test]
 fn test_setup() {
-    let (pointmanager_dispatcher, token_dispatcher, pointmanager_address, token_address, owner, tester) = set_up();
-    let balance = token_dispatcher.balanceOf(owner);
+    // let ( owner, tester) = set_up();
+    assert( 1 == 2, 'Owner tester are not the same');
+    // let balance = token_dispatcher.balanceOf(owner);
 
 
-    assert(balance == 0, 'Owner is not 42');
+    // assert(balance == 0, 'Owner is not 42');
 }
