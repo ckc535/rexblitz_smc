@@ -16,7 +16,7 @@ trait IPointManager<TContractState> {
     fn set_max_life(ref self: TContractState, max_life: u32);
     fn set_point_per_level(ref self: TContractState, point: u32);
     fn set_time_per_life(ref self: TContractState, time: u64);
-    fn set_permission(ref self: TContractState, address: ContractAddress, permission: bool);
+    fn set_admin(ref self: TContractState, address: ContractAddress);
 
     // GETTER
     fn get_token_address(self: @TContractState) -> ContractAddress;
@@ -92,13 +92,14 @@ mod PointManager {
     fn constructor(
         ref self: ContractState,
         owner: ContractAddress,
+        admin: ContractAddress,
         currency: ContractAddress,
         max_life: u32,
         point_per_level: u32,
         time_per_life: u64
     ) {
         self.owner.write(owner);
-        self.admin.write(owner);
+        self.admin.write(admin);
         self.currency.write(currency);
         self.max_life.write(max_life);
         self.point_per_level.write(point_per_level);
@@ -122,7 +123,7 @@ mod PointManager {
         MaxLifeUpdated: MaxLifeUpdated,
         PointPerLevelUpdated: PointPerLevelUpdated,
         TimePerLifeUpdated: TimePerLifeUpdated,
-        PermissionUpdated: PermissionUpdated,
+        AdminUpdated: AdminUpdated,
 
         #[flat]
         ReentrancyEvent: ReentrancyGuardComponent::Event,
@@ -191,9 +192,8 @@ mod PointManager {
     }
 
     #[derive(Drop, starknet::Event)]
-    struct PermissionUpdated {
-        address: ContractAddress,
-        permission: bool,
+    struct AdminUpdated {
+        address: ContractAddress
     }
 
 
@@ -203,8 +203,10 @@ mod PointManager {
         fn process_level(
             ref self: ContractState, user: ContractAddress, level: u32, has_won: bool,
         ) {
-            assert(self.owner.read() == get_caller_address(), 'Caller not owner');
+            
             self.reentrancy.start();
+            let caller_address = get_caller_address();
+            assert(self.owner.read() == caller_address || self.admin.read() == caller_address, 'Caller not owner or admin');
 
             if (has_won) {
                 let mut current_points = self.user_point.read(user);
@@ -252,9 +254,9 @@ mod PointManager {
         }
 
         fn reward_mission(ref self: ContractState, user: ContractAddress, reward_points: u32,) {
-            assert(self.owner.read() == get_caller_address(), 'Caller not owner');
+            let caller_address = get_caller_address();
+            assert(self.owner.read() == caller_address || self.admin.read() == caller_address, 'Caller not owner or admin');
             self.reentrancy.start();
-
             let current_points = self.user_point.read(user);
             let new_points = current_points + reward_points;
             self.user_point.write(user, new_points);
@@ -288,39 +290,45 @@ mod PointManager {
         // SETTER
 
         fn set_currency(ref self: ContractState, address: ContractAddress) {
-            assert(self.owner.read() == get_caller_address(), 'Caller not owner');
+            let caller_address = get_caller_address();
+            assert(self.owner.read() == caller_address || self.admin.read() == caller_address, 'Caller not owner or admin');
             self.currency.write(address);
             self.emit(CurrencyUpdated { new_currency: address });
         }
 
         fn set_life_pack_price(ref self: ContractState, amount: u32, price: u256) {
-            assert(self.owner.read() == get_caller_address(), 'Caller not owner');
+            let caller_address = get_caller_address();
+            assert(self.owner.read() == caller_address || self.admin.read() == caller_address, 'Caller not owner or admin');
             self.life_pack_price.write(amount, price);
             self.emit(LifePackPriceUpdated { amount, new_price: price });
         }
 
         fn set_max_life(ref self: ContractState, max_life: u32) {
-            assert(self.owner.read() == get_caller_address(), 'Caller not owner');
+            let caller_address = get_caller_address();
+            assert(self.owner.read() == caller_address || self.admin.read() == caller_address, 'Caller not owner or admin');
             self.max_life.write(max_life);
             self.emit(MaxLifeUpdated { new_max_life: max_life });
         }
 
         fn set_point_per_level(ref self: ContractState, point: u32) {
-            assert(self.owner.read() == get_caller_address(), 'Caller not owner');
+            let caller_address = get_caller_address();
+            assert(self.owner.read() == caller_address || self.admin.read() == caller_address, 'Caller not owner or admin');
             self.point_per_level.write(point);
             self.emit(PointPerLevelUpdated { new_point: point });
         }
 
         fn set_time_per_life(ref self: ContractState, time: u64) {
-            assert(self.owner.read() == get_caller_address(), 'Caller not owner');
+            let caller_address = get_caller_address();
+            assert(self.owner.read() == caller_address || self.admin.read() == caller_address, 'Caller not owner or admin');
             self.time_per_life.write(time);
             self.emit(TimePerLifeUpdated { new_time: time });
         }
 
-        fn set_permission(ref self: ContractState, address: ContractAddress, permission: bool) {
-            assert(self.owner.read() == get_caller_address(), 'Caller not owner');
-            self.whitelisted_contract.write(address, permission);
-            self.emit(PermissionUpdated { address, permission });
+        fn set_admin(ref self: ContractState, address: ContractAddress) {
+            let caller_address = get_caller_address();
+            assert(self.owner.read() == caller_address , 'Caller not owner');
+            self.admin.write(address);
+            self.emit(AdminUpdated { address });
         }
 
         // GETTER

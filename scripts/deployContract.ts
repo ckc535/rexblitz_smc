@@ -30,8 +30,8 @@ import {
   // const MAINNET_PK = '';
   // const mainnetAcc = new Account(provider, MAINNET_ADDRESS, MAINNET_PK);
   
-  const DEV_ADDRESS = '0x07e6a3b217d4Cd8C4d9b07D024E67146431f4d980eD43E80F03a3ffFa8ac16D4';
-  const DEV_PK = '0x02de13e951eb87a3c30959861bb8d9ac358763be971b2b678910ef1d91e5c166';
+  const DEV_ADDRESS = '0x0759ba5609769874CAB59869f95E6367dE5F03EA1Df6A2D82b2116fd5DcD902c';
+  const DEV_PK = '0x0392e0724ccd281a4562c0853f59af0fdbbdd1aad4b293522359714135060420';
   const devAcc = new Account(provider, DEV_ADDRESS, DEV_PK);
     
   async function deployPointManager() {
@@ -54,6 +54,7 @@ import {
     const contractCallData = new CallData(compiledContractSierra.abi);
     const contractConstructor = contractCallData.compile('constructor', {
       owner: devAcc.address,
+      admin: '0x03bdd0c2384b7bc76b791c6a8417413384873332f1e05685d5ce6bf9284a609e',
       currency: TOKEN_ADDRESS,
       max_life: 7,
       point_per_level: 10,
